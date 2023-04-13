@@ -18,6 +18,7 @@ class Polygon:
         self._angle = angle
         self.points = self.polygon()
         self.fractal_points = list(self.points)
+        self.rotate = None
     
     def polygon(self):
         polygon_angle = 360 / self._num_points # In degrees
@@ -45,20 +46,18 @@ class Polygon:
         if first: 
             radius = self.radius*shrinkage
             self.draw()
+            self.rotate = rotate
         else: radius = radius*shrinkage
-        polygon_angle = 360 / self.num_points 
         if depth >= 1:
             current_fractal_points = []
-            for i, point in enumerate(self.fractal_points):
-                flip_angle = polygon_angle/2 * (depth%2) # Rotates the polygon halfway every other depth
-                if rotate: fractal_angle = flip_angle
-                else: fractal_angle = self.angle
-                fractal_polygon = Polygon(self.num_points, radius, point, self.drawing, fractal_angle)
+            for point in self.fractal_points:
+                fractal_polygon = Polygon(self.num_points, radius, point, self.drawing, rotate)
                 fractal_polygon.draw()
                 for fractal_point in fractal_polygon.points:
                     current_fractal_points.append(fractal_point)
+            print(f"rotate is {rotate}")
             self.fractal_points = list(current_fractal_points)
-            self.draw_fractal(shrinkage, depth-1, rotate, radius, False)
+            self.draw_fractal(shrinkage, depth-1, rotate+self.rotate, radius, False)
         else:
             return self.fractal_points
         
@@ -388,7 +387,7 @@ hexagon = Polygon(6,40)
 fractal_polygon = Polygon(5, 50, [0, 0], drawing, 0)
 shrinkage = .5
 # fractal_shape.draw_polygons()
-fractal_points = fractal_polygon.draw_fractal(shrinkage, 5, True)
+fractal_points = fractal_polygon.draw_fractal(shrinkage, 5, 360/10)
 # print(f"fractal_points is {fractal_points} and fractal_polygon.fractal_points in {fractal_polygon.fractal_points}")
 # drawing.add(drawing.polygon(*fractal_points))
 
