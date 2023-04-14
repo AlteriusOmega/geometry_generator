@@ -1,5 +1,6 @@
 import svgwrite
 import math
+import os
 from typing import List
 
 # This will be a SVG geometric pattern creator app
@@ -7,7 +8,10 @@ from typing import List
 width = 100
 height = 400
  
-drawing = svgwrite.Drawing("test.svg")
+output_folder = "G:\My Drive\Design and 3D Printing Laser\Laser Cutting Engraving\Lightburn Inkscape Vector Graphics"
+output_filename = "geometry_generator_output.svg"
+output_path = os.path.join(output_folder, output_filename)
+drawing = svgwrite.Drawing(output_path)
 
 class Polygon:
     def __init__(self,  num_points, radius=5, center=[0,0], drawing=drawing, angle=0):
@@ -36,7 +40,7 @@ class Polygon:
     def rotate(self, rotation_angle:float):
         self._angle += rotation_angle
         self.points = self.polygon()
-        
+                
     def draw_outline(self, outline_offset):
         outline_polygon = Polygon(self.num_points, self.radius + outline_offset, self.center, self.drawing, self.angle)
         self.drawing.add(drawing.polygon(outline_polygon.points))
@@ -102,7 +106,7 @@ class GridIsometric:
         self._center = center
         self.drawing = drawing
         self.points = self._grid()
-        self._polygons = self._generate_polygons()
+        self.polygons = self._generate_polygons()
         self.polygon_points = self._polygon_points()
         # print(f"In init, self.points is {self.points}, self.polygons is {self.polygons}")   
         
@@ -129,25 +133,49 @@ class GridIsometric:
                 polygon = Polygon(self._polygon.num_points, self._polygon.radius, coord, self.drawing, self._polygon.angle)
                 polygon_row.append(polygon)
             polygons.append(polygon_row)
-        self._polygons = polygons
+        self.polygons = polygons
         self.polygon_points = self._polygon_points()
         return polygons
     
     def _polygon_points(self):
         polygon_points = [] # Flat list of all points of all polygons in grid
-        for i, row in enumerate(self._polygons):
+        for i, row in enumerate(self.polygons):
             for j, polygon in enumerate(row):
                 for point in polygon.points:
                     polygon_points.append(point)
         return polygon_points
     
     def modify_polygons(self, callback, **kwargs):
-        for i, row in enumerate(self._polygons):
-            for j, polygon in enumerate(row):
-                callback(self, polygon, i, j, **kwargs)
+        if self.num_x == 1 and self.num_y == 1: 
+            raise ValueError("Cannot modify grid of size 1 x 1")
+        else:
+            for i, row in enumerate(self.polygons):
+                for j, polygon in enumerate(row):
+                    callback(self, polygon, i, j, **kwargs)
                   
     def draw_polygons(self):
-        self.modify_polygons(lambda self, polygon, i, j: self.drawing.add(self.drawing.polygon(polygon.points))) 
+        self.modify_polygons(lambda self, polygon, i, j: self.drawing.add(self.drawing.polygon(polygon.points)))
+        
+    def center_polygon(self):
+        center_i_j = self.center_i_j()
+        return self.polygons[center_i_j[0]][center_i_j[1]]
+    
+    def center_geometric(self):
+        center_x = (self.points[0][0][0] + self.points[1][-1][0]) / 2 # Center of length from first row first point to second row last point (it's isometric so second row is shifted over)
+        center_y = (self.points[0][0][1] + self.points[-1][0][1]) / 2 # Top row y to bottom row y, colum doesn't matter
+        print(f"center_x is {center_x} and is {center_y}")
+        center = Polygon(3,1, [center_x, center_y])
+        self.drawing.add(self.drawing.polygon(center.points))
+        return [center_x, center_y]
+    
+    def center_i_j(self):
+        center_polygon_j = round(self._num_x/2)-1
+        center_polygon_i = round(self._num_y/2)-1
+        print(f"{center_polygon_i} {center_polygon_j}")
+        return [center_polygon_i, center_polygon_j]
+    
+    def distance(self, point_1:list, point_2:list):
+        return math.sqrt( (point_1[0] - point_2[0])**2 + (point_1[1] - point_2[1])**2 )
         
     def draw_outlines(self, outline_offset):
         self.modify_polygons(lambda self, polygon, i, j: polygon.draw_outline(outline_offset))
@@ -343,34 +371,57 @@ def get_polygon_vertices(start, end, num_vertices): # ChatGPT, this one doesn't 
     
     return vertices
     
-def radius_morph(grid, polygon:Polygon, i:int, j:int, magnitude):
-    # Calculate center as midpoint of diagonal line from first point to last point
-    # print(f"grid.points[0] is {grid.points[0]}")
-    center_polygon_i = math.round(len(grid.points)/2)
-    center_polygon_j = math.round(len(grid.points[0])/2)
-    center_polygon_center = grid.points[center_polygon_i][center_polygon_j]
-    center = [ (grid.points[0][0][0] + grid.points[-1][-1][0] )/2, (grid.points[0][0][1] + grid.points[-1][-1][1] )/2 ] 
-    # difference_x = abs(center[0] - polygon.center[0]) # polygon.center[0]
-    # difference_y = abs(center[1] - polygon.center[1])
+def radius_morph_polygon_center(grid, polygon:Polygon, i:int, j:int, magnitude):
+    center = grid.center_polygon().center
+    difference_x = abs(center[0] - polygon.center[0])
+    difference_y = abs(center[1] - polygon.center[1])
     
-    difference_x = center_polygon_center[0] - polygon.center[0]
-    difference_y = center_polygon_center[1] - polygon.center[1]
+    polygon.radius -= (difference_x + difference_y)*magnitude/10
     
-    polygon.radius += (difference_x + difference_y)*magnitude/10
-    # polygon.rotate(i+j*5)
-
-def radius_morph_2(grid, polygon:Polygon, i:int, j:int, num_x:int, num_y:int):
-    center_x = (num_x - 1)/2
-    center_y = (num_y - 1)/2
+def radius_morph_normalize(grid, polygon:Polygon, i:int, j:int, magnitude):
+    # Magnitude will be 0 to 1, 1 being where the radius becomes 0 at the smallest
+    # Use i and j
+    center = grid.center_polygon().center
+    # max_difference_x = abs(center[0] - grid.num_x)
+    # max_difference_y = abs(center[0] - grid.num_y)
+    # difference_x = abs(center[0] - grid.points[i][j][0])
+    # difference_y = abs(center[1] - grid.points[i][j][1])
+    # normalize_x = polygon.radius/max_difference_x
+    # normalize_y = polygon.radius/max_difference_y
+    # print(polygon.radius - max_difference_x*normalize_x)
+    
+    # Just calculate the actual line segment length and normalize that
+    # max_difference = max(grid.)
+    # difference = math.sqrt( (center[0] - polygon.center[0])**2 + (center[1] - polygon.center[1])**2 )
+    # polygon.radius -= (difference_x*normalize_x + difference_y*normalize_y)*magnitude/2
+    
+def circle_morph(grid:GridIsometric, polygon:Polygon, i:int, j:int, magnitude:float, decrease_out:bool = True):
+    center = grid.center_polygon().center
+    # Try every distance from center to each corner and get max
+    max_difference = max (grid.distance(center, grid.points[0][0]),
+                        grid.distance(center, grid.points[0][-1]),
+                        grid.distance(center, grid.points[-1][0]),
+                        grid.distance(center, grid.points[-1][-1]))
+    normalize = polygon.radius/max_difference
+    difference = math.sqrt( (center[0] - polygon.center[0])**2 + (center[1] - polygon.center[1])**2 )
+    if decrease_out:
+        polygon.radius -= difference*normalize*magnitude
+    else:
+        polygon.radius = 0
+        polygon.radius += difference*normalize*magnitude
+        
+def radius_morph_2(grid, polygon:Polygon, i:int, j:int):
+    center_x = (grid.num_x - 1)/2
+    center_y = (grid.num_y - 1)/2
     difference_x = abs(center_x - j)
     difference_y = abs(center_y - i)
     # print(f"i is {i}, j is {j}, center_x is {center_x}, difference_x is {difference_x}")
     polygon.radius -= (difference_x + difference_y)/4
 
-def sine_morph(grdid, polygon:Polygon, i:int, j:int, num_x:int, num_y:int, num_waves=1, amplitude=None):
-    if not amplitude: amplitude = num_x/2
-    frequency = num_waves / num_y
-    sine_value = amplitude * math.sin(2 * math.pi * frequency * i) + (num_x/2)
+def sine_morph(grid, polygon:Polygon, i:int, j:int, num_waves=1, amplitude=None):
+    if not amplitude: amplitude = grid.num_x/2
+    frequency = num_waves / grid.num_y
+    sine_value = amplitude * math.sin(2 * math.pi * frequency * i) + (grid.num_x/2)
     difference = abs(sine_value - j)
     # if j == 0: polygon.num_points = 4
     # if difference <= 2: polygon.num_points = 5
@@ -384,30 +435,27 @@ pentagon = Polygon(5, 40)
 
 hexagon = Polygon(6,40)
 
-fractal_polygon = Polygon(5, 50, [0, 0], drawing, 0)
-shrinkage = .5
+# fractal_polygon = Polygon(4, 50, [0, 0], drawing, 0)
+# shrinkage = .25
 # fractal_shape.draw_polygons()
-fractal_points = fractal_polygon.draw_fractal(shrinkage, 5, 360/10)
+# fractal_points = fractal_polygon.draw_fractal(shrinkage, 8, 360/16)
 # print(f"fractal_points is {fractal_points} and fractal_polygon.fractal_points in {fractal_polygon.fractal_points}")
 # drawing.add(drawing.polygon(*fractal_points))
-
-# test_grid = GridIsometric(10, 10, 40, hexagon)
-# test_grid.modify_polygons(radius_morph_1)
-# test_grid.draw_polygons()
-# test_grid.modify_polygons(radius_morph_2)
-# test_grid.draw_polygons()
-# test_grid._modify_polygons(sine_morph, num_waves = 2)
-# test_grid.draw_polygons()
 
 # mandala = Mandala(drawing, 20, 20, triangle)
 # mandala.draw_polygons()
 
-# honeycomb = GridIsometric(15, 15, 30, hexagon)
-# honeycomb.modify_polygons(radius_morph, magnitude = 0.3)
+honeycomb_hexagon = Polygon(6, 4.0)
+honeycomb = GridIsometric(8, 1, 1, honeycomb_hexagon)
+# honeycomb.modify_polygons(radius_morph_polygon_center, magnitude = 0.3)
+honeycomb.modify_polygons(circle_morph, magnitude = 1.0, decrease_out = True)
+honeycomb.draw_polygons()
+# honeycomb.polygon = honeycomb_hexagon
+# honeycomb.modify_polygons(circle_morph, magnitude = 1.0, decrease_out = False)
 # honeycomb.draw_polygons()
 
-# honeycomb.polygon = hexagon
-# honeycomb._modify_polygons(radius_morph, magnitude = -0.3)
+# honeycomb.polygon = honeycomb_hexagon
+# honeycomb.modify_polygons(radius_morph, magnitude = -0.3)
 # honeycomb.draw_polygons()
 
 # for i in range(10):
