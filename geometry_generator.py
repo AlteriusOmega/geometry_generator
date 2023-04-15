@@ -163,19 +163,36 @@ class GridIsometric:
     def center_geometric(self):
         center_x = (self.points[0][0][0] + self.points[1][-1][0]) / 2 # Center of length from first row first point to second row last point (it's isometric so second row is shifted over)
         center_y = (self.points[0][0][1] + self.points[-1][0][1]) / 2 # Top row y to bottom row y, colum doesn't matter
-        print(f"center_x is {center_x} and is {center_y}")
+        # print(f"center_x is {center_x} and is {center_y}")
         center = Polygon(3,1, [center_x, center_y])
         self.drawing.add(self.drawing.polygon(center.points))
         return [center_x, center_y]
     
     def center_i_j(self):
-        center_polygon_j = round(self._num_x/2)-1
-        center_polygon_i = round(self._num_y/2)-1
-        print(f"{center_polygon_i} {center_polygon_j}")
+        center_polygon_j = math.ceil(self._num_x/2)-1
+        center_polygon_i = math.ceil(self._num_y/2)-1
+        # print(f"num_x is {self._num_x} and center_polygon_j is {center_polygon_j}, num_y is {self._num_y} and center_polygon_i is {center_polygon_i}")
         return [center_polygon_i, center_polygon_j]
     
     def distance(self, point_1:list, point_2:list):
         return math.sqrt( (point_1[0] - point_2[0])**2 + (point_1[1] - point_2[1])**2 )
+    
+    def max_distance(self, origin_point):
+        distances = []
+        top_points = self.points[0]
+        bottom_points = self.points[-1]
+        left_points = [ row[0] for row in self.points ]
+        right_points = [row[-1] for row in self.points]
+        edge_points = top_points + bottom_points + left_points + right_points
+        for point in edge_points:
+            distances.append(self.distance(origin_point, point))
+        return max(distances)
+            
+        # max_distance = max (self.distance(origin_point, self.points[0][0]),
+        #             self.distance(origin_point, self.points[0][-1]),
+        #             self.distance(origin_point, self.points[-1][0]),
+        #             self.distance(origin_point, self.points[-1][-1]))
+        # return max_distance
         
     def draw_outlines(self, outline_offset):
         self.modify_polygons(lambda self, polygon, i, j: polygon.draw_outline(outline_offset))
@@ -398,17 +415,14 @@ def radius_morph_normalize(grid, polygon:Polygon, i:int, j:int, magnitude):
 def circle_morph(grid:GridIsometric, polygon:Polygon, i:int, j:int, magnitude:float, decrease_out:bool = True):
     center = grid.center_polygon().center
     # Try every distance from center to each corner and get max
-    max_difference = max (grid.distance(center, grid.points[0][0]),
-                        grid.distance(center, grid.points[0][-1]),
-                        grid.distance(center, grid.points[-1][0]),
-                        grid.distance(center, grid.points[-1][-1]))
-    normalize = polygon.radius/max_difference
+    max_distance = grid.max_distance(center)
+    normalize = polygon.radius/max_distance
     difference = math.sqrt( (center[0] - polygon.center[0])**2 + (center[1] - polygon.center[1])**2 )
-    if decrease_out:
-        polygon.radius -= difference*normalize*magnitude
-    else:
-        polygon.radius = 0
-        polygon.radius += difference*normalize*magnitude
+    if decrease_out: polygon.radius -= difference*normalize*magnitude
+    else: polygon.radius = 0 + difference*normalize*magnitude
+        
+def ripple_morph(grid:GridIsometric, polygon:Polygon, i:int, j:int, magnitude:float, decrease_out:bool = True):
+    pass
         
 def radius_morph_2(grid, polygon:Polygon, i:int, j:int):
     center_x = (grid.num_x - 1)/2
@@ -419,7 +433,7 @@ def radius_morph_2(grid, polygon:Polygon, i:int, j:int):
     polygon.radius -= (difference_x + difference_y)/4
 
 def sine_morph(grid, polygon:Polygon, i:int, j:int, num_waves=1, amplitude=None):
-    if not amplitude: amplitude = grid.num_x/2
+    if amplitude == None: amplitude = grid.num_x/2
     frequency = num_waves / grid.num_y
     sine_value = amplitude * math.sin(2 * math.pi * frequency * i) + (grid.num_x/2)
     difference = abs(sine_value - j)
@@ -428,6 +442,14 @@ def sine_morph(grid, polygon:Polygon, i:int, j:int, num_waves=1, amplitude=None)
     polygon.radius += (difference/10)
     polygon.angle += difference*3 
     
+def linear_gradient(grid:GridIsometric, polygon:Polygon, i:int, j:int,magnitude:float, angle, decrease_out:bool=False):
+    radians = -angle*(math.pi/180) # Angle should go counterclockwise
+    center = grid.center_polygon().center
+    distance = abs(math.cos(radians)*(center[1]-polygon.center[1]) - math.sin(radians)*(center[0]-polygon.center[0]))
+    max_distance = grid.max_distance(center)
+    normalize = polygon.radius / max_distance
+    if decrease_out: polygon.radius -= distance*normalize*magnitude
+    else:polygon.radius = 0 + distance*normalize*magnitude      
 
 triangle = Polygon(3, 10)
 
@@ -445,11 +467,18 @@ hexagon = Polygon(6,40)
 # mandala = Mandala(drawing, 20, 20, triangle)
 # mandala.draw_polygons()
 
-honeycomb_hexagon = Polygon(6, 4.0)
-honeycomb = GridIsometric(8, 1, 1, honeycomb_hexagon)
+honeycomb_hexagon = Polygon(6, 6.0)
+honeycomb = GridIsometric(12, 19, 67, honeycomb_hexagon)
 # honeycomb.modify_polygons(radius_morph_polygon_center, magnitude = 0.3)
-honeycomb.modify_polygons(circle_morph, magnitude = 1.0, decrease_out = True)
+honeycomb.modify_polygons(circle_morph, magnitude = 0.75, decrease_out = True)
+# honeycomb.modify_polygons(linear_gradient, magnitude = 1.0, angle = 30, decrease_out = True)
 honeycomb.draw_polygons()
+honeycomb.draw_outlines(5)
+
+# for i in range(4):
+#     honeycomb.modify_polygons(linear_gradient, magnitude = 0.7, angle = 45+10*i, decrease_out = True)
+#     honeycomb.draw_polygons()
+
 # honeycomb.polygon = honeycomb_hexagon
 # honeycomb.modify_polygons(circle_morph, magnitude = 1.0, decrease_out = False)
 # honeycomb.draw_polygons()
