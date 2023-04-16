@@ -59,7 +59,6 @@ class Polygon:
                 fractal_polygon.draw()
                 for fractal_point in fractal_polygon.points:
                     current_fractal_points.append(fractal_point)
-            print(f"rotate is {rotate}")
             self.fractal_points = list(current_fractal_points)
             self.draw_fractal(shrinkage, depth-1, rotate+self.rotate, radius, False)
         else:
@@ -449,15 +448,17 @@ pentagon = Polygon(5, 40)
 
 hexagon = Polygon(6,40)
 
-fractal_polygon = Polygon(4, 50, [0, 0], drawing, 0)
+fractal_polygon_radius = 70
+fractal_polygon = Polygon(4, fractal_polygon_radius, [0, 0], drawing, 0)
 shrinkage = .5
 
 # fractal_points_1 = fractal_polygon.draw_fractal(shrinkage, 7, 360/16)
 
 # print(fractal_polygon.draw_fractal(shrinkage, 7, 0))
 
-fractal_grid = Grid(40,1, 5, fractal_polygon)
-fractal_grid.modify_polygons(lambda grid, polygon, i, j: polygon.draw_fractal(shrinkage, 5, 0))
+fractal_grid = Grid(fractal_polygon_radius*1,1, 6, fractal_polygon)
+fractal_grid.modify_polygons(lambda grid, polygon, i, j: polygon.draw_fractal(shrinkage, 4, 0))
+# fractal_grid.draw_polygons()
 
 # print(f"fractal_points is {fractal_points_1} ")
 # drawing.add(drawing.polygon(fractal_points_1))
