@@ -243,6 +243,7 @@ class GridIsometric(Grid):
                 y = self.origin[1] + i * spacing_y
                 row.append([x, y])
             grid.append(row)
+        self._symmetric = False
         return grid
     
     def center_geometric(self):
@@ -251,8 +252,20 @@ class GridIsometric(Grid):
         # center = Polygon(3,1, [center_x, center_y]) # Make tiny triangle to show center
         # self.drawing.add(self.drawing.polygon(center.points))
         return [center_x, center_y]
+    
+    def grid_symmetric(self):
+        ### Adds an extra point to the non-shifted rows to make grid bilaterally symmetric. Better for making fractal grids
+        if not self._symmetric:
+            for i, row in enumerate(self.points):
+                if i%2 == 0:
+                    last_point = row[-1]
+                    next_x = last_point[0] + self.spacing
+                    next_y = last_point[1]
+                    self.points[i].append([next_x, next_y])
+        self.polygons = self._generate_polygons()
+        self._symmetric = True
 
-class Mandala:
+class Mandala: # TODO consider making this inherit from Grid class
     def __init__(self, drawing, mandala_radius:float, symmetry:int, polygon:Polygon, angle = 0, center = [0, 0]):
         self.drawing = drawing
         self._radius = mandala_radius
@@ -415,6 +428,7 @@ def circle_morph(grid:GridIsometric, polygon:Polygon, i:int, j:int, magnitude:fl
     else: polygon.radius = 0 + difference*normalize*magnitude
         
 def ripple_morph(grid:GridIsometric, polygon:Polygon, i:int, j:int, magnitude:float, decrease_out:bool = True):
+    # TODO implement this, similar to cirlce_morph but effect waxes and wanes according to sine function
     pass
         
 def radius_morph_2(grid, polygon:Polygon, i:int, j:int):
@@ -456,9 +470,11 @@ shrinkage = .5
 
 # print(fractal_polygon.draw_fractal(shrinkage, 7, 0))
 
-fractal_grid = Grid(fractal_polygon_radius*1,1, 6, fractal_polygon)
-fractal_grid.modify_polygons(lambda grid, polygon, i, j: polygon.draw_fractal(shrinkage, 4, 0))
-# fractal_grid.draw_polygons()
+# fractal_grid = Grid(fractal_polygon_radius*1,1, 6, fractal_polygon)
+fractal_grid = GridIsometric(fractal_polygon_radius*1,1, 6, fractal_polygon)
+fractal_grid.grid_symmetric()
+# fractal_grid.modify_polygons(lambda grid, polygon, i, j: polygon.draw_fractal(shrinkage, 4, 0))
+fractal_grid.draw_polygons()
 
 # print(f"fractal_points is {fractal_points_1} ")
 # drawing.add(drawing.polygon(fractal_points_1))
