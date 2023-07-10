@@ -11,10 +11,10 @@ height = 400
 output_folder = "G:\My Drive\Design and 3D Printing Laser\Laser Cutting Engraving\Lightburn Inkscape Vector Graphics"
 output_filename = "geometry_generator_output.svg"
 output_path = os.path.join(output_folder, output_filename)
-drawing = svgwrite.Drawing(output_path)
+drawing_global = svgwrite.Drawing(output_path)
 
 class Polygon:
-    def __init__(self,  num_points, radius=5, center=[0,0], drawing=drawing, angle=0):
+    def __init__(self,  num_points, radius=5, center=[0,0], drawing=drawing_global, angle=0):
         self._num_points = num_points
         self._radius = radius
         self._center = center
@@ -35,7 +35,7 @@ class Polygon:
         return points
         
     def draw(self):
-        drawing.add(drawing.polygon(self.points))
+        self.drawing.add(self.drawing.polygon(self.points))
 
     def rotate(self, rotation_angle:float):
         self._angle += rotation_angle
@@ -43,7 +43,7 @@ class Polygon:
                 
     def draw_outline(self, outline_offset):
         outline_polygon = Polygon(self.num_points, self.radius + outline_offset, self.center, self.drawing, self.angle)
-        self.drawing.add(drawing.polygon(outline_polygon.points))
+        self.drawing.add(self.drawing.polygon(outline_polygon.points))
         
     def draw_fractal(self, shrinkage:float, depth:int,  rotate = False, radius=None, first=True,):
         # print(f"self.fractal_points is {self.fractal_points}")
@@ -98,7 +98,7 @@ class Polygon:
         self.points = self.polygon()
 
 class Grid:
-    def __init__(self, spacing, polygon, num_x, num_y, origin=[0, 0], drawing=drawing):
+    def __init__(self, spacing, polygon, num_x, num_y, origin=[0, 0], drawing=drawing_global):
         self._spacing = spacing
         self._num_x = num_x
         self._num_y = num_y
@@ -230,7 +230,7 @@ class Grid:
         self.points = self._grid()
         
 class GridIsometric(Grid):
-    def __init__(self, spacing, num_x, num_y, polygon, symmetric=True, origin=[0, 0], drawing=drawing):
+    def __init__(self, spacing, num_x, num_y, polygon, symmetric=True, origin=[0, 0], drawing=drawing_global):
         self._spacing = spacing
         self._num_x = num_x
         self._num_y = num_y
@@ -276,7 +276,7 @@ class GridIsometric(Grid):
         return 
 
 class GridMandala(Grid):
-    def __init__(self, radius, symmetry, num_y, polygon, origin=[0, 0], drawing=drawing):
+    def __init__(self, radius, symmetry, num_y, polygon, origin=[0, 0], drawing=drawing_global):
         super().__init__(radius, symmetry, num_y, polygon, origin, drawing)
         
 
