@@ -98,7 +98,7 @@ class Polygon:
         self.points = self.polygon()
 
 class Grid:
-    def __init__(self, spacing, num_x, num_y, polygon, origin=[0, 0], drawing=drawing):
+    def __init__(self, spacing, polygon, num_x, num_y, origin=[0, 0], drawing=drawing):
         self._spacing = spacing
         self._num_x = num_x
         self._num_y = num_y
@@ -230,6 +230,18 @@ class Grid:
         self.points = self._grid()
         
 class GridIsometric(Grid):
+    def __init__(self, spacing, num_x, num_y, polygon, symmetric=True, origin=[0, 0], drawing=drawing):
+        self._spacing = spacing
+        self._num_x = num_x
+        self._num_y = num_y
+        self._polygon = polygon
+        self._origin = origin
+        self.drawing = drawing
+        self.points = self._grid()
+        if symmetric: self._grid_symmetric()
+        self.polygons = self._generate_polygons()
+        self.polygon_points = self._polygon_points()
+        
     def _grid(self):
         spacing_y = self._spacing * math.sin(60*(math.pi/180))
         grid = []
@@ -243,7 +255,6 @@ class GridIsometric(Grid):
                 y = self.origin[1] + i * spacing_y
                 row.append([x, y])
             grid.append(row)
-        self._symmetric = False
         return grid
     
     def center_geometric(self):
@@ -253,17 +264,21 @@ class GridIsometric(Grid):
         # self.drawing.add(self.drawing.polygon(center.points))
         return [center_x, center_y]
     
-    def grid_symmetric(self):
+    def _grid_symmetric(self):
         ### Adds an extra point to the non-shifted rows to make grid bilaterally symmetric. Better for making fractal grids
-        if not self._symmetric:
-            for i, row in enumerate(self.points):
-                if i%2 == 0:
-                    last_point = row[-1]
-                    next_x = last_point[0] + self.spacing
-                    next_y = last_point[1]
-                    self.points[i].append([next_x, next_y])
+        for i, row in enumerate(self.points):
+            if i%2 == 0:
+                last_point = row[-1]
+                next_x = last_point[0] + self.spacing
+                next_y = last_point[1]
+                self.points[i].append([next_x, next_y])
         self.polygons = self._generate_polygons()
-        self._symmetric = True
+        return 
+
+class GridMandala(Grid):
+    def __init__(self, radius, symmetry, num_y, polygon, origin=[0, 0], drawing=drawing):
+        super().__init__(radius, symmetry, num_y, polygon, origin, drawing)
+        
 
 class Mandala: # TODO consider making this inherit from Grid class
     def __init__(self, drawing, mandala_radius:float, symmetry:int, polygon:Polygon, angle = 0, center = [0, 0]):
@@ -454,57 +469,4 @@ def linear_gradient(grid:GridIsometric, polygon:Polygon, i:int, j:int,magnitude:
     max_distance = grid.max_distance(center)
     normalize = polygon.radius / max_distance
     if decrease_out: polygon.radius -= distance*normalize*magnitude
-    else:polygon.radius = 0 + distance*normalize*magnitude      
-
-triangle = Polygon(3, 10)
-
-pentagon = Polygon(5, 40)
-
-hexagon = Polygon(6,40)
-
-fractal_polygon_radius = 70
-fractal_polygon = Polygon(4, fractal_polygon_radius, [0, 0], drawing, 0)
-shrinkage = .5
-
-# fractal_points_1 = fractal_polygon.draw_fractal(shrinkage, 7, 360/16)
-
-# print(fractal_polygon.draw_fractal(shrinkage, 7, 0))
-
-# fractal_grid = Grid(fractal_polygon_radius*1,1, 6, fractal_polygon)
-fractal_grid = GridIsometric(fractal_polygon_radius*1,1, 6, fractal_polygon)
-fractal_grid.grid_symmetric()
-# fractal_grid.modify_polygons(lambda grid, polygon, i, j: polygon.draw_fractal(shrinkage, 4, 0))
-fractal_grid.draw_polygons()
-
-# print(f"fractal_points is {fractal_points_1} ")
-# drawing.add(drawing.polygon(fractal_points_1))
-
-# mandala = Mandala(drawing, 20, 20, triangle)
-# mandala.draw_polygons()
-
-honeycomb_hexagon = Polygon(6, 6.0)
-honeycomb = GridIsometric(12, 19, 67, honeycomb_hexagon)
-# honeycomb.modify_polygons(radius_morph_polygon_center, magnitude = 0.3)
-honeycomb.modify_polygons(circle_morph, magnitude = 0.75, decrease_out = True)
-# honeycomb.modify_polygons(linear_gradient, magnitude = 1.0, angle = 30, decrease_out = True)
-# honeycomb.draw_polygons()
-# honeycomb.draw_outlines(5)
-
-# for i in range(4):
-#     honeycomb.modify_polygons(linear_gradient, magnitude = 0.7, angle = 45+10*i, decrease_out = True)
-#     honeycomb.draw_polygons()
-
-# honeycomb.polygon = honeycomb_hexagon
-# honeycomb.modify_polygons(circle_morph, magnitude = 1.0, decrease_out = False)
-# honeycomb.draw_polygons()
-
-# honeycomb.polygon = honeycomb_hexagon
-# honeycomb.modify_polygons(radius_morph, magnitude = -0.3)
-# honeycomb.draw_polygons()
-
-# for i in range(10):
-#     hexagon = Polygon(drawing, [0, 0], i+5, 6)
-#     temp_mandala = Mandala(drawing, (i+2)*10, 12, hexagon)
-#     temp_mandala.draw_polygons()
-
-drawing.save()
+    else:polygon.radius = 0 + distance*normalize*magnitude
