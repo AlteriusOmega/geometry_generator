@@ -17,7 +17,7 @@ shrinkage = .5
 
 # fractal_grid = Grid(fractal_polygon_radius*1,1, 6, fractal_polygon)
 fractal_grid = GridIsometric(fractal_polygon_radius*(2+(1/8)),1, 6, fractal_polygon, True)
-fractal_grid.modify_polygons(lambda grid, polygon, i, j: polygon.draw_fractal(shrinkage, 4, 0))
+# fractal_grid.modify_polygons(lambda grid, polygon, i, j: polygon.draw_fractal(shrinkage, 4, 0))
 # fractal_grid.draw_polygons()
 
 # print(f"fractal_points is {fractal_points_1} ")
@@ -50,5 +50,10 @@ honeycomb.modify_polygons(circle_morph, magnitude = 0.75, decrease_out = True)
 #     hexagon = Polygon(drawing_global, [0, 0], i+5, 6)
 #     temp_mandala = Mandala(drawing_global, (i+2)*10, 12, hexagon)
 #     temp_mandala.draw_polygons()
+
+
+pentagon.draw()
+
+print(drawing_global.tostring())
 
 drawing_global.save()

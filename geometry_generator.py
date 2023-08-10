@@ -281,7 +281,7 @@ class GridMandala(Grid):
         
 
 class Mandala: # TODO consider making this inherit from Grid class
-    def __init__(self, drawing, mandala_radius:float, symmetry:int, polygon:Polygon, angle = 0, center = [0, 0]):
+    def __init__(self, drawing, mandala_radius:float, symmetry:int, polygon:Polygon, angle=0, center=[0, 0]):
         self.drawing = drawing
         self._radius = mandala_radius
         self._symmetry = symmetry
