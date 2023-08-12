@@ -45,7 +45,7 @@ class Polygon:
         outline_polygon = Polygon(self.num_points, self.radius + outline_offset, self.center, self.drawing, self.angle)
         self.drawing.add(self.drawing.polygon(outline_polygon.points))
         
-    def draw_fractal(self, shrinkage:float, depth:int,  rotate = False, radius=None, first=True,):
+    def draw_fractal(self, shrinkage:float, depth:int,  rotate=False, radius=None, first=True,):
         # print(f"self.fractal_points is {self.fractal_points}")
         if first: 
             radius = self.radius*shrinkage
@@ -237,8 +237,8 @@ class GridIsometric(Grid):
         self._polygon = polygon
         self._origin = origin
         self.drawing = drawing
-        self.points = self._grid()
         if symmetric: self._grid_symmetric()
+        else: self.grid()
         self.polygons = self._generate_polygons()
         self.polygon_points = self._polygon_points()
         
@@ -277,7 +277,8 @@ class GridIsometric(Grid):
 
 class GridMandala(Grid):
     def __init__(self, radius, symmetry, num_y, polygon, origin=[0, 0], drawing=drawing_global):
-        super().__init__(radius, symmetry, num_y, polygon, origin, drawing)
+        self.radius = radius
+        
         
 
 class Mandala: # TODO consider making this inherit from Grid class
